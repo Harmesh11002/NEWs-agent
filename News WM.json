@@ -1,0 +1,351 @@
+{
+  "name": "News WM",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldToSplitOut": "articles",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "id": "cb585c11-d25d-49c8-a114-caa621ffb0ec",
+      "name": "Extract Articles",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Grab the raw articles directly from the source API node safely\nconst rawArticles = $('Fetch AI News from NewsAPI').first().json.articles || [];\n\n// Loop over all incoming items from the workflow loop\nfor (let i = 0; i < $input.all().length; i++) {\n  let item = $input.all()[i];\n\n  // Set standard text fallbacks\n  item.json.title = item.json.title || \"No Title Found\";\n  item.json.url = item.json.url || \"No URL Found\";\n  item.json.summary = item.json.summary || item.json.output || \"No Summary Generated\";\n\n  // Find the matching article from NewsAPI using a partial title match\n  const matchedArticle = rawArticles.find(article => \n    article.title && item.json.title.toLowerCase().includes(article.title.toLowerCase().substring(0, 15))\n  );\n\n  // If a match is found and has an image, use it; otherwise, use a unique random fallback number\n  if (matchedArticle && matchedArticle.urlToImage) {\n    item.json.urlToImage = matchedArticle.urlToImage;\n  } else {\n    item.json.urlToImage = `https://picsum.photos/600/300?random=${Math.floor(Math.random() * 1000)}`;\n  }\n}\n\nreturn $input.all();"
+      },
+      "id": "8456d9c7-8c2a-4300-a2ae-96925ef51bc9",
+      "name": "Format Whatsapp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -272,
+        -16
+      ],
+      "id": "66535aad-1dc7-466a-ac59-204268c6b439",
+      "name": "Loop Over Items",
+      "alwaysOutputData": false,
+      "notesInFlow": false,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        272
+      ],
+      "id": "bb7e9895-6755-49f9-943d-c0ae7bcffa6e",
+      "name": "Limit to Top 2",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Summarize this article:\nTitle: {{ $json.articles.title }}. \nDescription:{{ $json.articles.description }}.\nURL:{{ $json.articles.url }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -160,
+        160
+      ],
+      "id": "e583df3f-7268-4a54-a20f-61ac087d6cd8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Get the AI text\nconst aiOutput = item.json.content?.parts?.[0]?.text || \"\";\n\n// Attempt to parse the AI output\nlet summaryData = {};\ntry {\n  // Clean the string and parse\n  const cleanJson = aiOutput.replace(/\\\\/g, \"\").replace(/\\n/g, \"\");\n  summaryData = JSON.parse(cleanJson);\n} catch (e) {\n  summaryData = { Title: \"No Title\", Summary: aiOutput };\n}\n\n// Return the data mapping the capitalized keys from your AI\nreturn {\n  json: {\n    title: $('Limit to Top 2').item.json.articles.title || summaryData.Title || \"No Title\",\n    url:$('Limit to Top 2').item.json.articles.url || summaryData.URL || \"No URL Found\",\n    summary:$json.output || summaryData.Summary || aiOutput\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        288
+      ],
+      "id": "7a87e742-cd3e-48a2-b5da-c7917295a511",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "harmesh.patra@pibm.in",
+        "subject": "News Latest!!",
+        "message": "=<div style=\"font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;\">\n  <h2 style=\"color: #2c3e50; margin-top: 0;\">{{ $json.title }}</h2>\n  \n  <img src=\"{{ $json.urlToImage }}\" alt=\"Article Image\" style=\"width: 100%; max-width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; display: block;\">\n  \n  <h4 style=\"color: #7f8c8d; margin-bottom: 5px;\">Summary:</h4>\n  <p style=\"color: #34495e; font-size: 15px; background-color: #f9f9f9; padding: 12px; border-left: 4px solid #3498db; margin-top: 0;\">{{ $json.summary }}</p>\n  \n  <p><strong>Read the full story here:</strong> <a href=\"{{ $json.url }}\" style=\"color: #3498db; text-decoration: none;\" target=\"_blank\">{{ $json.url }}</a></p>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        -80
+      ],
+      "id": "d28f31d2-54ca-47f0-b71b-69e777a44bba",
+      "name": "Send a message",
+      "webhookId": "bc1e2027-3a44-43b1-9a82-84b93a6cfc58",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "B24Hp5IRl4jpTn2c",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        304
+      ],
+      "id": "7be06707-6d0d-4928-9355-8bd8b3d7c879",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "oxtCgmdsXHVKkCwI",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "60480295-5ea3-452d-98f1-caa4d1ed4549",
+      "name": "EveryDay",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "from": "+14155238886",
+        "to": "+917735933482",
+        "toWhatsapp": true,
+        "message": "=*News Update:*\n{{ $json.title }}\n{{ $json.url }}\n{{ $json.summary }}\n\n",
+        "options": {
+          "statusCallback": "="
+        }
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        160,
+        80
+      ],
+      "id": "b1ac563d-8478-4eb5-9082-424454b33e7b",
+      "name": "Send an SMS/MMS/WhatsApp message",
+      "credentials": {
+        "twilioApi": {
+          "id": "BdubH9zFkCLcmCrX",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://newsapi.org/v2/everything?q=tesla&from=2026-05-12&sortBy=publishedAt&apiKey=8eca9c4865594850ba49031e3a30e139",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "economics"
+            },
+            {
+              "name": "from",
+              "value": "={{ $today.toISODate() }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $today.toISODate() }}"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            },
+            {
+              "name": "sortBy",
+              "value": "popularity"
+            },
+            {
+              "name": "pageSize",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "82944002-8622-483f-9d0c-38839ec77bb8",
+      "name": "Fetch AI News from NewsAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -480,
+        -16
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract Articles": {
+      "main": [
+        [
+          {
+            "node": "Limit to Top 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Whatsapp Message": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send an SMS/MMS/WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Format Whatsapp Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit to Top 2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EveryDay": {
+      "main": [
+        [
+          {
+            "node": "Fetch AI News from NewsAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch AI News from NewsAPI": {
+      "main": [
+        [
+          {
+            "node": "Extract Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a6ef63e2-8a34-40d4-91d0-3abe7aac6794",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a009c02506f388a7decb42af587df52707905b8360f3765f5fd1de48d6de0783"
+  },
+  "nodeGroups": [],
+  "id": "3jxVR05dVDDzO5fP",
+  "tags": []
+}
