@@ -22,6 +22,7 @@ This architecture introduces a **Loop Over Items** structure. By separating data
 ---------------------------------------------------------------------------------------------------------
 
 ⚙️ Deep Dive Component Breakdown:
+
 1.The Pulse (EveryDay Trigger): Chronologically kicks off the workflow daily without human intervention.
 
 2.Data Harvesting (Fetch AI News from NewsAPI): Connects to remote JSON endpoints, passing customizable queries (e.g., Tech, Economics, Business).
