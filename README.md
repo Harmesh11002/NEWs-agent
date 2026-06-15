@@ -38,6 +38,7 @@ This architecture introduces a **Loop Over Items** structure. By separating data
 ---------------------------------------------------------------------------------------------------------
 
 🛠️ Prerequisites & Secure Setup
+
 To set up this pipeline, ensure you have API tokens from the following platforms:
 
   1.n8n: A self-hosted or cloud instance.
@@ -49,6 +50,7 @@ To set up this pipeline, ensure you have API tokens from the following platforms
 ---------------------------------------------------------------------------------------------------------
 
 📥 Deployment Instructions
+
   1.Clone/Download: Grab the News WM.json file directly from this repository.
 
   2.Import to Canvas: Open your n8n workspace, click the Three Dots (...) menu button in the top-right corner, and select Import from File.
