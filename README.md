@@ -4,7 +4,6 @@
 ![n8n](https://img.shields.io/badge/Automation-n8n-FF6C37?style=for-the-badge&logo=n8n&logoColor=white)
 ![Groq](https://img.shields.io/badge/LLM_Engine-Groq_Cloud-F54C1E?style=for-the-badge)
 ![API](https://img.shields.io/badge/Data_Source-NewsAPI-0052CC?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 An elegant, autonomous multi-agent pipeline built in **n8n** that monitors global news endpoints daily, extracts targeted topics, processes them through isolated AI evaluation loops, and delivers highly summarized briefings straight to your messaging channels.
 
